@@ -198,11 +198,16 @@ function loop(time) {
 
 requestAnimationFrame(loop)
 
-// start overlay
-canvas.addEventListener('click', () => {
+function startGame() {
   const overlay = document.getElementById('overlay')
   if (overlay) overlay.style.display = 'none'
-})
+}
+
+// works on phone
+canvas.addEventListener('touchstart', startGame)
+
+// works on desktop
+canvas.addEventListener('click', startGame)
 </script>
 </body>
 </html>
