@@ -45,6 +45,28 @@
         <button onclick="searchByName()">Search</button>
     </div>
 
+    <div style="background:white; padding:12px; border-radius:12px; margin-bottom:15px;">
+    <input 
+        type="text" 
+        id="allergyInput" 
+        placeholder="Enter allergies (e.g. fish, soy, almond)" 
+        style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; margin-bottom:8px;"
+    >
+
+    <select id="severitySelect" style="width:100%; padding:10px; border-radius:8px; margin-bottom:8px;">
+        <option value="critical">🚨 Critical</option>
+        <option value="moderate">⚠️ Moderate</option>
+    </select>
+
+    <button onclick="saveAllergies()" style="width:100%;">Save Allergies</button>
+
+    <div id="currentAllergies" style="font-size:0.85em; color:#666; margin-top:8px;"></div>
+</div>
+    
+<button onclick="clearAllergies()" style="width:100%; background:#e74c3c; margin-top:8px;">
+    Reset
+</button>
+    
     <button id="scanBtn" onclick="startScanner()" style="width:100%; background: var(--dark); margin-bottom: 20px; height: 60px; font-size: 1.2em;">
         📷 Scan Barcode
     </button>
@@ -125,17 +147,18 @@
 
                 const { criticalHit, moderateHit } = analyzeIngredients(lowerIngredients);
                 // Apply Highlights
-                [...userAllergies.critical, ...userAllergies.moderate].forEach(term => {
+[...userAllergies.critical, ...userAllergies.moderate].forEach(term => {
     const clean = term.replace(/-/g, ' ');
     const regex = new RegExp(`(${clean})`, 'gi');
 
     ingredients = ingredients.replace(regex,
         '<mark style="background:#ff0; color:#d00; font-weight:bold; padding:0 2px; border-radius:3px;">$1</mark>');
 });
-                    const clean = term.replace('en:', '').replace(/-/g, ' ');
-                    const regex = new RegExp(`(${clean})`, 'gi');
-                    ingredients = ingredients.replace(regex, '<mark style="background: #ff0; color: #d00; font-weight: bold; padding: 0 2px; border-radius: 3px;">$1</mark>');
-                });
+
+    ingredients = ingredients.replace(regex,
+        '<mark style="background:#ff0; color:#d00; font-weight:bold; padding:0 2px; border-radius:3px;">$1</mark>');
+});
+                    
 
                 let alertHtml = `<button onclick="resetApp()" class="btn-reset">🔄 Scan New Item</button>`;
 
@@ -150,8 +173,9 @@
     </div>`;
 }
 
-if (!criticalHit && moderateHit) {
-    alertHtml += `
+if (!criticalHit && !moderateHit) {
+    alertHtml += `...`;
+}
     <div class="warning-banner" style="background: var(--warning);">
         ⚠️ Contains ingredients you should avoid
     </div>`;
@@ -163,7 +187,7 @@ if (!criticalHit && !moderateHit) {
         ✅ No listed allergens detected
     </div>`;
 }
-                }
+                
 
                 alertBox.innerHTML = alertHtml;
                 document.getElementById('pName').innerText = product.product_name || "Unknown Product";
@@ -205,6 +229,38 @@ if (!criticalHit && !moderateHit) {
         if (data.products?.length > 0) fetchData(data.products[0].code);
         else alert("Search returned no results.");
     }
+    function saveAllergies() {
+    const input = document.getElementById('allergyInput').value.toLowerCase();
+    const severity = document.getElementById('severitySelect').value;
+
+    if (!input) return;
+
+    // split by comma so user can enter multiple
+    const terms = input.split(',').map(t => t.trim()).filter(t => t);
+
+   userAllergies[severity].push(...terms);
+
+    localStorage.setItem('allergies', JSON.stringify(userAllergies));
+
+    document.getElementById('allergyInput').value = "";
+
+    renderAllergies();
+}
+   function renderAllergies() {
+    const el = document.getElementById('currentAllergies');
+
+    el.innerHTML = `
+        <b>🚨 Critical:</b> ${userAllergies.critical.join(', ') || 'None'}<br>
+        <b>⚠️ Moderate:</b> ${userAllergies.moderate.join(', ') || 'None'}
+    `;
+}
+
+renderAllergies(); 
+    function clearAllergies() {
+    localStorage.removeItem('allergies');
+    userAllergies = { critical: [], moderate: [] };
+    renderAllergies();
+}
 </script>
 
 </body>
