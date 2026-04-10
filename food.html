@@ -151,29 +151,98 @@
 </div>
 
 <script>
-    // JS Logic will go here to fetch API data and control the scanner
-    function startScanner() {
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: { width: 250, height: 150 } },
-            (decodedText) => {
-                // Success: Barcode found
-                fetchData(decodedText);
-                html5QrCode.stop();
+    // 1. CUSTOMIZE THIS: Add any specific allergens for her husband here
+// Use the format "en:ingredient-name"
+const watchList = ["en:peanuts", "en:milk", "en:soy", "en:gluten", "en:eggs"];
+
+// 2. The Scanner Setup
+const html5QrCode = new Html5Qrcode("reader");
+
+function startScanner() {
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        (decodedText) => {
+            fetchData(decodedText);
+            // Optional: stop scanning after a success to save battery
+            // html5QrCode.stop(); 
+        }
+    ).catch(err => console.error("Camera error:", err));
+}
+
+// 3. The API Brains
+async function fetchData(barcode) {
+    const resultCard = document.getElementById('resultCard');
+    const alertBox = document.getElementById('allergenAlert');
+    
+    resultCard.style.display = 'block';
+    alertBox.innerHTML = 'Searching...';
+
+    try {
+        const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name,brands,ingredients_text,allergens_tags,nutriments,nutrition_grades`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === 1) {
+            const product = data.product;
+
+            // UI Updates
+            document.getElementById('pName').innerText = product.product_name || "Unknown Product";
+            document.getElementById('pBrand').innerText = product.brands || "Unknown Brand";
+            document.getElementById('pIngredients').innerText = product.ingredients_text || "No ingredient list found.";
+
+            // Allergen Logic
+            const productAllergens = product.allergens_tags || [];
+            const foundAllergens = productAllergens.filter(a => watchList.includes(a));
+
+            if (foundAllergens.length > 0) {
+                const names = foundAllergens.map(a => a.replace('en:', '').toUpperCase());
+                alertBox.innerHTML = `<div class="warning-banner">⚠️ ALERT: CONTAINS ${names.join(', ')}</div>`;
+            } else {
+                alertBox.innerHTML = `<div style="color: #27ae60; text-align: center; margin-bottom: 10px; font-weight: bold;">✅ No watched allergens detected</div>`;
             }
-        ).catch(err => console.error("Camera access denied", err));
-    }
 
-    async function fetchData(barcode) {
-        // Logic for calling Open Food Facts API
-        document.getElementById('resultCard').style.display = 'block';
-    }
+            // Nutri-Score Logic
+            const score = product.nutrition_grades ? product.nutrition_grades.toUpperCase() : "N/A";
+            const scoreEl = document.getElementById('nScore');
+            const colors = { 'A': '#038141', 'B': '#85BB2F', 'C': '#FECB02', 'D': '#EE8100', 'E': '#E63E11' };
+            
+            scoreEl.innerText = `Nutri-Score: ${score}`;
+            scoreEl.style.backgroundColor = colors[score] || '#95a5a6';
 
-    function searchByName() {
-        const query = document.getElementById('foodSearch').value;
-        // Logic for text search
+            // Nutrition Table
+            const n = product.nutriments;
+            document.getElementById('nTable').innerHTML = `
+                <tr><td>Calories</td><td>${n['energy-kcal_100g'] || 0} kcal</td></tr>
+                <tr><td>Fat</td><td>${n.fat_100g || 0}g</td></tr>
+                <tr><td>Sugars</td><td>${n.sugars_100g || 0}g</td></tr>
+                <tr><td>Protein</td><td>${n.proteins_100g || 0}g</td></tr>
+            `;
+
+        } else {
+            alertBox.innerHTML = "❌ Product not found.";
+        }
+    } catch (error) {
+        alertBox.innerHTML = "❌ Connection Error.";
+        console.error(error);
     }
+}
+
+// 4. Text Search Logic
+async function searchByName() {
+    const query = document.getElementById('foodSearch').value;
+    if (!query) return;
+    
+    const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${query}&search_simple=1&action=process&json=1&page_size=1`);
+    const data = await response.json();
+    
+    if (data.products && data.products.length > 0) {
+        fetchData(data.products[0].code);
+    } else {
+        alert("Product not found by name.");
+    }
+}
+
 </script>
 
 </body>
