@@ -165,6 +165,10 @@
                     <tr><td><b>Protein</b></td><td style="text-align:right;">${round(n.proteins_100g)}g</td></tr>
                     <tr><td><b>Total Sugars</b></td><td style="text-align:right;">${round(n.sugars_100g)}g</td></tr>
                     <tr><td><b>Sodium</b></td><td style="text-align:right;">${round(n.sodium_100g)}g</td></tr>
+                    <p style="font-size: 0.8em; color: #7f8c8d; text-align: center; margin-top: 10px;">
+                    * Nutritional values are per 100g (approx. 3.5 oz)
+                    </p>
+
                 `;
             } else {
                 alertBox.innerHTML = `<button onclick="resetApp()" class="btn-reset">🔄 Try Again</button><p style="color:red; text-align:center;">Product not found.</p>`;
