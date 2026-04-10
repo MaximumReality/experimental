@@ -6,44 +6,46 @@
     <title>Nutrition Lab</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #2ecc71; --danger: #e74c3c; --warning: #e67e22; --dark: #2c3e50; }
+        :root { --primary: #2ecc71; --danger: #e74c3c; --warning: #f39c12; --dark: #2c3e50; }
         
-        body { font-family: -apple-system, system-ui, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; color: var(--dark); }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; color: var(--dark); }
         .container { max-width: 500px; margin: 0 auto; }
         
-        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ccc; border-radius: 8px; font-size: 16px; }
         
         button { padding: 12px 20px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #000; min-height: 250px;}
-
-        .result-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; margin-top: 10px; }
+        .btn-reset { background: var(--dark); width: 100%; margin-bottom: 15px; padding: 15px; font-size: 1.1em; }
         
-        .warning-banner { color: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; font-weight: bold; text-align: center; line-height: 1.4; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #000; min-height: 250px; }
+
+        .result-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; }
+        
+        .warning-banner { color: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; font-weight: bold; text-align: center; }
         
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
-            70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+            70% { transform: scale(1.03); box-shadow: 0 0 0 12px rgba(255, 0, 0, 0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
         }
 
-        .nutri-score { display: inline-block; padding: 5px 15px; border-radius: 5px; font-weight: 800; color: white; margin-bottom: 15px; }
-        .nutrition-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        .nutrition-table td { padding: 10px 0; border-bottom: 1px solid #eee; }
-        .ingredients-box { background: #fdfdfd; border-left: 4px solid var(--primary); padding: 10px; font-size: 0.9em; line-height: 1.4; overflow-wrap: break-word;}
+        .nutri-score { display: inline-block; padding: 6px 16px; border-radius: 6px; font-weight: 800; color: white; margin-bottom: 15px; }
+        .nutrition-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .nutrition-table td { padding: 12px 0; border-bottom: 1px solid #eee; font-size: 1.1em; }
+        .ingredients-box { background: #fafafa; border-left: 5px solid var(--primary); padding: 12px; font-size: 0.95em; line-height: 1.5; overflow-wrap: break-word; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h1>Nutrition Lab</h1></header>
+    <header><h1 style="text-align: center;">Nutrition Lab</h1></header>
 
     <div class="input-group">
-        <input type="text" id="foodSearch" placeholder="Enter brand or name...">
+        <input type="text" id="foodSearch" placeholder="Search by name/brand...">
         <button onclick="searchByName()">Search</button>
     </div>
 
-    <button onclick="startScanner()" style="width:100%; background: var(--dark); margin-bottom: 20px;">
+    <button id="scanBtn" onclick="startScanner()" style="width:100%; background: var(--dark); margin-bottom: 20px; height: 60px; font-size: 1.2em;">
         📷 Scan Barcode
     </button>
 
@@ -52,129 +54,129 @@
     <div id="resultCard" class="result-card">
         <div id="allergenAlert"></div>
         <div class="product-header">
-            <h2 id="pName">Product Name</h2>
-            <p id="pBrand">Brand Name</p>
+            <h2 id="pName" style="margin: 0;"></h2>
+            <p id="pBrand" style="color: #666; margin-top: 5px;"></p>
         </div>
-        <div id="nScore" class="nutri-score">Nutri-Score</div>
+        <div id="nScore" class="nutri-score"></div>
         <table class="nutrition-table" id="nTable"></table>
-        <h3>Full Ingredients</h3>
+        <h3 style="border-top: 2px solid #eee; padding-top: 15px;">Full Ingredients</h3>
         <div class="ingredients-box" id="pIngredients"></div>
     </div>
 </div>
 
 <script>
-    // 1. Config with French translations for Morocco
-const highDanger = [
-    "en:fish", "en:cod", "en:salmon", "en:tuna", "en:anchovies", 
-    "en:anchovy", "en:sardines", "en:mackerel", "en:shellfish",
-    "en:fish-sauce", "en:bonito", "en:worcestershire-sauce",
-    "poisson", "anchois", "thon", "sardines", "maquereau"
-];
-const warnings = [
-    "en:soy-protein-isolate", "en:almonds", "en:brazil-nuts", "en:tree-nuts", 
-    "en:walnuts", "en:hazelnuts", "soja", "amande", "noix"
-];
+    // Config: US-Specific Allergies & Hidden Fish Sources
+    const highDanger = [
+        "en:fish", "en:cod", "en:salmon", "en:tuna", "en:anchovies", "en:anchovy", 
+        "en:sardines", "en:mackerel", "en:shellfish", "en:fish-sauce", 
+        "en:bonito", "en:worcestershire-sauce", "pescado" // Spanish for fish
+    ];
+    const warnings = [
+        "en:soy-protein-isolate", "en:almonds", "en:brazil-nuts", "en:tree-nuts", 
+        "en:walnuts", "en:hazelnuts", "almendras", "nuez"
+    ];
 
-const html5QrCode = new Html5Qrcode("reader");
+    const html5QrCode = new Html5Qrcode("reader");
 
-function startScanner() {
-    // Hide previous results if any
-    document.getElementById('resultCard').style.display = 'none';
-    
-    html5QrCode.start(
-        { facingMode: "environment" }, 
-        { fps: 10, qrbox: { width: 250, height: 150 } },
-        (decodedText) => { 
-            html5QrCode.stop(); // Stop camera once barcode found
-            fetchData(decodedText); 
-        }
-    ).catch(err => console.error(err));
-}
-
-// Function to reset the UI for a fresh scan
-function resetForNewScan() {
-    document.getElementById('resultCard').style.display = 'none';
-    document.getElementById('allergenAlert').innerHTML = '';
-    document.getElementById('foodSearch').value = '';
-    startScanner();
-}
-
-async function fetchData(barcode) {
-    const resultCard = document.getElementById('resultCard');
-    const alertBox = document.getElementById('allergenAlert');
-    const ingredientBox = document.getElementById('pIngredients');
-    
-    resultCard.style.display = 'block';
-    alertBox.innerHTML = 'Analyzing...';
-    resultCard.scrollIntoView({ behavior: 'smooth' });
-
-    try {
-        const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name,brands,ingredients_text,allergens_tags,nutriments,nutrition_grades`);
-        const data = await response.json();
-
-        if (data.status === 1) {
-            const product = data.product;
-            const pAllergens = (product.allergens_tags || []).map(a => a.toLowerCase());
-            let ingredients = product.ingredients_text || "No ingredient list found.";
-
-            const dangerMatches = pAllergens.filter(a => highDanger.some(d => a.includes(d)));
-            const warningMatches = pAllergens.filter(a => warnings.some(w => a.includes(w)));
-
-            // Highlight fish in text (works for English and French)
-            highDanger.forEach(term => {
-                const regex = new RegExp(`(${term.replace('en:', '')})`, 'gi');
-                ingredients = ingredients.replace(regex, '<b style="color:red; background:yellow;">$1</b>');
-            });
-
-            let alertHtml = '';
-            if (dangerMatches.length > 0) {
-                alertHtml += `<div class="warning-banner" style="background: #000; border: 4px solid red; animation: pulse 1.5s infinite;">🚨 EXTREME DANGER: FISH DETECTED 🚨</div>`;
+    function startScanner() {
+        document.getElementById('resultCard').style.display = 'none';
+        document.getElementById('scanBtn').style.display = 'none';
+        
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            (decodedText) => { 
+                html5QrCode.stop();
+                document.getElementById('scanBtn').style.display = 'block';
+                fetchData(decodedText); 
             }
-            if (warningMatches.length > 0) {
-                const names = warningMatches.map(a => a.replace('en:', '').toUpperCase());
-                alertHtml += `<div class="warning-banner" style="background: var(--warning);">⚠️ WARNING: CONTAINS ${names.join(', ')}</div>`;
-            }
-            if (dangerMatches.length === 0 && warningMatches.length === 0) {
-                alertHtml = `<div style="color: #27ae60; text-align: center; padding: 10px; font-weight: bold;">✅ No watched allergens detected</div>`;
-            }
-
-            // Add the "Reset" button to the top of the alert box
-            alertHtml = `<button onclick="resetForNewScan()" style="width:100%; background:#34495e; margin-bottom:15px;">🔄 Scan Another Item</button>` + alertHtml;
-
-            alertBox.innerHTML = alertHtml;
-            document.getElementById('pName').innerText = product.product_name || "Unknown";
-            document.getElementById('pBrand').innerText = product.brands || "Unknown";
-            ingredientBox.innerHTML = ingredients;
-
-            // Nutri-Score & Nutrition Table
-            const score = (product.nutrition_grades || "N/A").toUpperCase();
-            const scoreEl = document.getElementById('nScore');
-            const colors = { 'A': '#038141', 'B': '#85BB2F', 'C': '#FECB02', 'D': '#EE8100', 'E': '#E63E11' };
-            scoreEl.innerText = `Nutri-Score: ${score}`;
-            scoreEl.style.backgroundColor = colors[score] || '#95a5a6';
-
-            const n = product.nutriments;
-            document.getElementById('nTable').innerHTML = `
-                <tr><td>Calories</td><td>${n['energy-kcal_100g'] || 0} kcal</td></tr>
-                <tr><td>Protein</td><td>${n.proteins_100g || 0}g</td></tr>
-                <tr><td>Sugar</td><td>${n.sugars_100g || 0}g</td></tr>
-            `;
-        } else {
-            alertBox.innerHTML = `<button onclick="resetForNewScan()" style="width:100%; background:#34495e; margin-bottom:15px;">🔄 Try Again</button><br>❌ Product not found.`;
-        }
-    } catch (e) {
-        alertBox.innerHTML = `<button onclick="resetForNewScan()" style="width:100%; background:#34495e; margin-bottom:15px;">🔄 Try Again</button><br>❌ Connection Error.`;
+        ).catch(err => {
+            alert("Camera error. Ensure you are on HTTPS.");
+            document.getElementById('scanBtn').style.display = 'block';
+        });
     }
-}
 
-async function searchByName() {
-    const query = document.getElementById('foodSearch').value;
-    if (!query) return;
-    const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${query}&search_simple=1&action=process&json=1&page_size=1`);
-    const data = await res.json();
-    if (data.products?.length > 0) fetchData(data.products[0].code);
-}
+    function resetApp() {
+        document.getElementById('resultCard').style.display = 'none';
+        document.getElementById('allergenAlert').innerHTML = '';
+        startScanner();
+    }
 
+    async function fetchData(barcode) {
+        const resultCard = document.getElementById('resultCard');
+        const alertBox = document.getElementById('allergenAlert');
+        const ingredientBox = document.getElementById('pIngredients');
+        
+        resultCard.style.display = 'block';
+        alertBox.innerHTML = '<p style="text-align:center;">Analyzing ingredients...</p>';
+        resultCard.scrollIntoView({ behavior: 'smooth' });
+
+        try {
+            const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name,brands,ingredients_text,allergens_tags,nutriments,nutrition_grades`);
+            const data = await response.json();
+
+            if (data.status === 1) {
+                const product = data.product;
+                const pAllergens = (product.allergens_tags || []).map(a => a.toLowerCase());
+                let ingredients = product.ingredients_text || "No ingredients listed.";
+
+                const dangerMatches = pAllergens.filter(a => highDanger.some(d => a.includes(d)));
+                const warningMatches = pAllergens.filter(a => warnings.some(w => a.includes(w)));
+
+                // Highlight Logic
+                highDanger.concat(warnings).forEach(term => {
+                    const clean = term.replace('en:', '').replace(/-/g, ' ');
+                    const regex = new RegExp(`(${clean})`, 'gi');
+                    ingredients = ingredients.replace(regex, '<b style="color:red; background:yellow;">$1</b>');
+                });
+
+                let alertHtml = `<button onclick="resetApp()" class="btn-reset">🔄 Scan New Item</button>`;
+
+                if (dangerMatches.length > 0) {
+                    alertHtml += `<div class="warning-banner" style="background: #000; border: 4px solid red; animation: pulse 1.5s infinite;">🚨 EXTREME DANGER: FISH DETECTED 🚨</div>`;
+                }
+                if (warningMatches.length > 0) {
+                    const names = warningMatches.map(a => a.replace('en:', '').toUpperCase());
+                    alertHtml += `<div class="warning-banner" style="background: var(--warning);">⚠️ WARNING: CONTAINS ${names.join(', ')}</div>`;
+                }
+                if (dangerMatches.length === 0 && warningMatches.length === 0) {
+                    alertHtml += `<div style="color: #27ae60; text-align: center; padding: 10px; font-weight: bold; border: 2px solid #27ae60; border-radius: 8px; margin-bottom: 15px;">✅ No watched allergens detected</div>`;
+                }
+
+                alertBox.innerHTML = alertHtml;
+                document.getElementById('pName').innerText = product.product_name || "Unknown Product";
+                document.getElementById('pBrand').innerText = product.brands || "Unknown Brand";
+                ingredientBox.innerHTML = ingredients;
+
+                const score = (product.nutrition_grades || "N/A").toUpperCase();
+                const scoreEl = document.getElementById('nScore');
+                const colors = { 'A': '#038141', 'B': '#85BB2F', 'C': '#FECB02', 'D': '#EE8100', 'E': '#E63E11' };
+                scoreEl.innerText = `Nutri-Score: ${score}`;
+                scoreEl.style.backgroundColor = colors[score] || '#95a5a6';
+
+                const n = product.nutriments;
+                document.getElementById('nTable').innerHTML = `
+                    <tr><td><b>Calories</b></td><td style="text-align:right;">${n['energy-kcal_100g'] || 0} kcal</td></tr>
+                    <tr><td><b>Protein</b></td><td style="text-align:right;">${n.proteins_100g || 0}g</td></tr>
+                    <tr><td><b>Total Sugars</b></td><td style="text-align:right;">${n.sugars_100g || 0}g</td></tr>
+                    <tr><td><b>Sodium</b></td><td style="text-align:right;">${n.sodium_100g || 0}g</td></tr>
+                `;
+            } else {
+                alertBox.innerHTML = `<button onclick="resetApp()" class="btn-reset">🔄 Try Again</button><p style="color:red; text-align:center;">Product not found.</p>`;
+            }
+        } catch (e) {
+            alertBox.innerHTML = `<button onclick="resetApp()" class="btn-reset">🔄 Try Again</button><p style="color:red; text-align:center;">Connection error.</p>`;
+        }
+    }
+
+    async function searchByName() {
+        const query = document.getElementById('foodSearch').value;
+        if (!query) return;
+        const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${query}&search_simple=1&action=process&json=1&page_size=1`);
+        const data = await res.json();
+        if (data.products?.length > 0) fetchData(data.products[0].code);
+        else alert("Search returned no results.");
+    }
 </script>
 
 </body>
