@@ -163,7 +163,7 @@ async function fetchData(barcode) {
         // highlight
         [...userAllergies.critical, ...userAllergies.moderate].forEach(term => {
             const clean = term.replace(/-/g, ' ');
-            const regex = new RegExp(clean, 'gi');
+            const regex = new RegExp(`\\b(${clean})\\b`, 'gi');
             ingredients = ingredients.replace(
                 regex,
                 `<mark style="background:#ff0;color:#d00;font-weight:bold;">$&</mark>`
