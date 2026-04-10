@@ -15,13 +15,12 @@
         input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
         
         button { padding: 12px 20px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #000; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #000; min-height: 250px;}
 
         .result-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; margin-top: 10px; }
         
         .warning-banner { color: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; font-weight: bold; text-align: center; line-height: 1.4; }
         
-        /* High Danger Animation */
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
             70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
@@ -31,7 +30,7 @@
         .nutri-score { display: inline-block; padding: 5px 15px; border-radius: 5px; font-weight: 800; color: white; margin-bottom: 15px; }
         .nutrition-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
         .nutrition-table td { padding: 10px 0; border-bottom: 1px solid #eee; }
-        .ingredients-box { background: #fdfdfd; border-left: 4px solid var(--primary); padding: 10px; font-size: 0.9em; line-height: 1.4; }
+        .ingredients-box { background: #fdfdfd; border-left: 4px solid var(--primary); padding: 10px; font-size: 0.9em; line-height: 1.4; overflow-wrap: break-word;}
     </style>
 </head>
 <body>
@@ -64,8 +63,11 @@
 </div>
 
 <script>
-    // Config: Specific Allergies
-    const highDanger = ["en:fish", "en:cod", "en:salmon", "en:tuna", "en:mackerel", "en:sardines"];
+    const highDanger = [
+        "en:fish", "en:cod", "en:salmon", "en:tuna", "en:anchovies", 
+        "en:anchovy", "en:sardines", "en:mackerel", "en:shellfish",
+        "en:fish-sauce", "en:bonito", "en:worcestershire-sauce"
+    ];
     const warnings = ["en:soy-protein-isolate", "en:almonds", "en:brazil-nuts", "en:tree-nuts", "en:walnuts", "en:hazelnuts"];
 
     const html5QrCode = new Html5Qrcode("reader");
@@ -81,6 +83,7 @@
     async function fetchData(barcode) {
         const resultCard = document.getElementById('resultCard');
         const alertBox = document.getElementById('allergenAlert');
+        const ingredientBox = document.getElementById('pIngredients');
         
         resultCard.style.display = 'block';
         alertBox.innerHTML = 'Analyzing...';
@@ -93,14 +96,21 @@
             if (data.status === 1) {
                 const product = data.product;
                 const pAllergens = product.allergens_tags || [];
+                let ingredients = product.ingredients_text || "No ingredient list found.";
 
-                // Logic: Danger vs Warning
                 const dangerMatches = pAllergens.filter(a => highDanger.includes(a));
                 const warningMatches = pAllergens.filter(a => warnings.includes(a));
 
+                // Highlight fish/anchovy in text
+                highDanger.forEach(fishType => {
+                    const cleanName = fishType.replace('en:', '').replace('-', ' ');
+                    const regex = new RegExp(`(${cleanName})`, 'gi');
+                    ingredients = ingredients.replace(regex, '<b style="color:red; background:yellow;">$1</b>');
+                });
+
                 let alertHtml = '';
                 if (dangerMatches.length > 0) {
-                    alertHtml += `<div class="warning-banner" style="background: #000; border: 4px solid red; animation: pulse 1.5s infinite;">🚨 EXTREME DANGER: FISH DETECTED 🚨</div>`;
+                    alertHtml += `<div class="warning-banner" style="background: #000; border: 4px solid red; animation: pulse 1.5s infinite;">🚨 EXTREME DANGER: FISH/ANCHOVY DETECTED 🚨</div>`;
                 }
                 if (warningMatches.length > 0) {
                     const names = warningMatches.map(a => a.replace('en:', '').toUpperCase());
@@ -111,18 +121,16 @@
                 }
 
                 alertBox.innerHTML = alertHtml;
-                document.getElementById('pName').innerText = product.product_name || "Unknown Product";
-                document.getElementById('pBrand').innerText = product.brands || "Unknown Brand";
-                document.getElementById('pIngredients').innerText = product.ingredients_text || "No ingredient list found.";
+                document.getElementById('pName').innerText = product.product_name || "Unknown";
+                document.getElementById('pBrand').innerText = product.brands || "Unknown";
+                ingredientBox.innerHTML = ingredients;
 
-                // Nutri-Score Color
                 const score = (product.nutrition_grades || "N/A").toUpperCase();
                 const scoreEl = document.getElementById('nScore');
                 const colors = { 'A': '#038141', 'B': '#85BB2F', 'C': '#FECB02', 'D': '#EE8100', 'E': '#E63E11' };
                 scoreEl.innerText = `Nutri-Score: ${score}`;
                 scoreEl.style.backgroundColor = colors[score] || '#95a5a6';
 
-                // Nutrition
                 const n = product.nutriments;
                 document.getElementById('nTable').innerHTML = `
                     <tr><td>Calories</td><td>${n['energy-kcal_100g'] || 0} kcal</td></tr>
@@ -144,6 +152,7 @@
         const res = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${query}&search_simple=1&action=process&json=1&page_size=1`);
         const data = await res.json();
         if (data.products?.length > 0) fetchData(data.products[0].code);
+        else alert("No products found.");
     }
 </script>
 
