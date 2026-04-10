@@ -154,6 +154,8 @@ async function fetchData(barcode) {
         }
 
         const product = data.product;
+        const n = product.nutriments || {};
+const round = (v) => v ? parseFloat(v).toFixed(1) : "0";
 
         let ingredients = product.ingredients_text || "No ingredients listed.";
         let lowerIngredients = ingredients.toLowerCase();
@@ -188,13 +190,37 @@ async function fetchData(barcode) {
 
         alertBox.innerHTML = alertHtml;
 
-        document.getElementById('pName').innerText = product.product_name || "Unknown";
-        document.getElementById('pBrand').innerText = product.brands || "";
-        ingredientBox.innerHTML = ingredients;
 
-        const score = (product.nutrition_grades || "N/A").toUpperCase();
-        document.getElementById('nScore').innerText = `Nutri-Score: ${score}`;
+const product = data.product;
 
+const n = product.nutriments || {};
+const round = (v) => v ? parseFloat(v).toFixed(1) : "0";
+
+const ingredientBox = document.getElementById('pIngredients');
+
+// UI basics
+document.getElementById('pName').innerText = product.product_name || "Unknown";
+document.getElementById('pBrand').innerText = product.brands || "";
+
+// nutrition table
+const table = document.getElementById('nTable');
+if (table) {
+    table.innerHTML = `
+<tr><td><b>Calories</b></td><td style="text-align:right;">${round(n['energy-kcal_100g'])} kcal</td></tr>
+<tr><td><b>Carbs</b></td><td style="text-align:right;">${round(n.carbohydrates_100g)}g</td></tr>
+<tr><td><b>Sugars</b></td><td style="text-align:right;">${round(n.sugars_100g)}g</td></tr>
+<tr><td><b>Fiber</b></td><td style="text-align:right;">${round(n.fiber_100g)}g</td></tr>
+<tr><td><b>Protein</b></td><td style="text-align:right;">${round(n.proteins_100g)}g</td></tr>
+<tr><td><b>Sodium</b></td><td style="text-align:right;">${round(n.sodium_100g * 1000)}mg</td></tr>
+`;
+}
+
+// ingredients
+ingredientBox.innerHTML = ingredients;
+
+// nutri-score
+const score = (product.nutrition_grades || "N/A").toUpperCase();
+document.getElementById('nScore').innerText = `Nutri-Score: ${score}`;
     } catch (e) {
         alertBox.innerHTML = `<p style="color:red;">Connection error</p>`;
     }
