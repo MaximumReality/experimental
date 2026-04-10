@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- Mobile optimization -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Title -->
+  <title>MAXIMUM REALITY // THE SKY IS PEELING</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- Style -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #020008;
+      overflow: hidden;
+      touch-action: none;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      font-family: "Courier New", monospace;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    canvas {
+      display: block;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(100vw, calc(100vh * 4 / 3));
+      height: min(100vh, calc(100vw * 3 / 4));
+      image-rendering: pixelated;
+      border: 1px solid #3d0066;
+      box-shadow: 0 0 40px #8b00ff44, 0 0 80px #8b00ff22;
+    }
+
+    #overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto; /* ✅ allow taps */
+}
+
+    #overlayBox {
+      text-align: center;
+      padding: 32px 24px;
+      border: 1px solid #ff0040;
+      box-shadow: 0 0 60px #ff004033, inset 0 0 40px #ff004011;
+      background: rgba(10,0,20,0.95);
+    }
+
+    .title {
+      color: #ff0040;
+      font-size: clamp(28px, 8vw, 42px);
+      font-weight: bold;
+      letter-spacing: 6px;
+      text-shadow: 0 0 20px #ff0040;
+      margin: 0;
+    }
+
+    .sub {
+      color: #8b00ff;
+      font-size: 14px;
+      margin-top: 8px;
+      letter-spacing: 3px;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="game" width="800" height="600"></canvas>
+
+<div id="overlay">
+  <div id="overlayBox">
+    <p class="title">SYNC FAILED</p>
+    <p class="sub">TAP TO MANIFEST</p>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game')
+const ctx = canvas.getContext('2d')
+
+let lastTime = 0
+
+const player = {
+  x: 400,
+  y: 300,
+  vx: 0,
+  vy: 0
+}
+
+const keys = new Set()
+
+// keyboard (optional)
+window.addEventListener('keydown', e => keys.add(e.key))
+window.addEventListener('keyup', e => keys.delete(e.key))
+
+// 🌟 TOUCH CONTROL
+let touchActive = false
+let touchX = 0
+let touchY = 0
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault()
+  const t = e.touches[0]
+  touchActive = true
+  touchX = t.clientX
+  touchY = t.clientY
+}, { passive: false })
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault()
+  const t = e.touches[0]
+  touchX = t.clientX
+  touchY = t.clientY
+}, { passive: false })
+
+canvas.addEventListener('touchend', () => {
+  touchActive = false
+})
+
+// 🎮 GAME LOGIC
+function update(dt) {
+  let vx = 0
+  let vy = 0
+
+  // keyboard fallback
+  if (keys.has('ArrowRight') || keys.has('d')) vx += 1
+  if (keys.has('ArrowLeft') || keys.has('a')) vx -= 1
+  if (keys.has('ArrowUp') || keys.has('w')) vy -= 1
+  if (keys.has('ArrowDown') || keys.has('s')) vy += 1
+
+  // TOUCH = move toward finger
+  if (touchActive) {
+    const rect = canvas.getBoundingClientRect()
+    const tx = (touchX - rect.left) * (canvas.width / rect.width)
+    const ty = (touchY - rect.top) * (canvas.height / rect.height)
+
+    vx = tx - player.x
+    vy = ty - player.y
+
+    const dist = Math.hypot(vx, vy)
+    if (dist > 5) {
+      vx /= dist
+      vy /= dist
+    } else {
+      vx = 0
+      vy = 0
+    }
+  }
+
+  player.vx = vx * 200
+  player.vy = vy * 200
+
+  player.x += player.vx * dt
+  player.y += player.vy * dt
+}
+
+// 🎨 DRAW
+function draw(t) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+  ctx.fillStyle = '#8b00ff'
+  ctx.beginPath()
+  ctx.arc(player.x, player.y, 10, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.fillStyle = `rgba(191,0,255,${0.6 + Math.sin(t * 0.003) * 0.4})`
+  ctx.font = '14px Courier New'
+  const text = '[ TOUCH ANYWHERE TO MOVE ]'
+  ctx.fillText(text, 400 - ctx.measureText(text).width / 2, 350)
+}
+
+// 🔁 LOOP
+function loop(time) {
+  const dt = (time - lastTime) / 1000
+  lastTime = time
+
+  update(dt)
+  draw(time)
+
+  requestAnimationFrame(loop)
+}
+
+requestAnimationFrame(loop)
+
+function startGame() {
+  const overlay = document.getElementById('overlay')
+  if (overlay) overlay.style.display = 'none'
+}
+
+// works on phone
+canvas.addEventListener('touchstart', startGame)
+
+// works on desktop
+canvas.addEventListener('click', startGame)
+</script>
+</body>
+</html>
+nst lastTimeRef = useRef<number>(0)
+  const gameStateRef = useRef({ playing: false, integrity: 42, sync: 100, score: 0, scroll: 0 })
+  const phaseRef = useRef<'title' | 'playing' | 'dead'>('title')
+
+
+
+  // ─── Level Generation ──────────────────────────────────────────────────────
+
+
+
+    // ── HUD
+    drawHUD(ctx, W, H, gs, t)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  }, [])
+
+  const drawHUD = (ctx: CanvasRenderingContext2D, W: number, H: number, gs: typeof gameStateRef.current, t: number) => {
+
+    if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) vx += 1
+    if (keys.has('ArrowUp') || keys.has('w') || keys.has('W')) vy -= 1
+    if (keys.has('ArrowDown') || keys.has('s') || keys.has('S')) vy += 1
+    if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    player.vel.x = lerp(player.vel.x, vx * spd, 0.18)
+    player.vel.y = lerp(player.vel.y, vy * spd, 0.18)
+    player.pos.x += player.vel.x * (dt / 1000)
+
+      ctx.fillStyle = `rgba(191,0,255,${0.6 + Math.sin(t * 0.003) * 0.4})`
+      ctx.shadowColor = PALETTE.neon
+      ctx.shadowBlur = 8
+      const prompt = '[ PRESS ENTER OR CLICK TO MANIFEST ]'
+      ctx.fillText(prompt, W / 2 - ctx.measureText(prompt).width / 2, H / 2 + 60)
+
+      ctx.font = '10px "Courier New", monospace'
+      ctx.fillStyle = 'rgba(100,0,200,0.5)'
+      ctx.shadowColor = 'transparent'
+      const controls = 'WASD / ARROW KEYS TO NAVIGATE    COLLECT NEURAL ECHOES    AVOID VOID ENTITIES'
+      ctx.fillText(controls, W / 2 - ctx.measureText(controls).width / 2, H / 2 + 100)
+
+      // Vignette
+
+    const onKeyUp = (e: KeyboardEvent) => keysRef.current.delete(e.key)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKeyUp)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp) }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  }, [initGame])
+
+  const handleCanvasClick = () => {
+
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#020008' }}>
+      <canvas
+        ref={canvasRef}
+        width={800}
+
+        onClick={handleCanvasClick}
+        style={{
+          display: 'block',
+          margin: '0 auto',
+          marginTop: '50vh',
+          transform: 'translateY(-50%)',
+
+
+
+
+
+
+          cursor: state.phase === 'title' ? 'pointer' : 'none',
+          imageRendering: 'pixelated',
+          border: '1px solid #3d0066',
+          boxShadow: '0 0 40px #8b00ff44, 0 0 80px #8b00ff22',
+
+
+        }}
+      />
+
+
+        }}>
+          <div style={{
+            textAlign: 'center',
+            padding: '48px 64px',
+            border: '1px solid #ff0040',
+            boxShadow: '0 0 60px #ff004033, inset 0 0 40px #ff004011',
+            background: 'rgba(10,0,20,0.95)',
+
+
+          }}>
+            <p style={{ color: '#ff0040', fontSize: 42, fontWeight: 'bold', margin: 0, letterSpacing: 6, textShadow: '0 0 20px #ff0040' }}>
+              SYNC FAILED
+            </p>
+            <p style={{ color: '#8b00ff', fontSize: 16, marginTop: 8, letterSpacing: 3 }}>
+
+  const lastTimeRef = useRef<number>(0)
+  const gameStateRef = useRef({ playing: false, integrity: 42, sync: 100, score: 0, scroll: 0 })
+  const phaseRef = useRef<'title' | 'playing' | 'dead'>('title')
+  const touchRef = useRef<{ active: boolean; startX: number; startY: number; dx: number; dy: number }>({ active: false, startX: 0, startY: 0, dx: 0, dy: 0 })
+
+  // ─── Level Generation ──────────────────────────────────────────────────────
+
+
+
+    // ── HUD
+    drawHUD(ctx, W, H, gs, t)
+
+    // ── Touch joystick indicator
+    const touch = touchRef.current
+    if (touch.active) {
+      const canvas = canvasRef.current
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect()
+        const scaleX = W / rect.width
+        const scaleY = H / rect.height
+        const cx = (touch.startX - rect.left) * scaleX
+        const cy = (touch.startY - rect.top) * scaleY
+        const jx = clamp(touch.dx * scaleX, -60, 60)
+        const jy = clamp(touch.dy * scaleY, -60, 60)
+
+        // Outer ring
+        ctx.save()
+        ctx.globalAlpha = 0.25
+        ctx.strokeStyle = PALETTE.cyan
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(cx, cy, 50, 0, Math.PI * 2)
+        ctx.stroke()
+
+        // Inner thumb
+        ctx.globalAlpha = 0.5
+        ctx.fillStyle = PALETTE.cyan
+        ctx.beginPath()
+        ctx.arc(cx + jx, cy + jy, 16, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
+    }
+  }, [])
+
+  const drawHUD = (ctx: CanvasRenderingContext2D, W: number, H: number, gs: typeof gameStateRef.current, t: number) => {
+
+    if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) vx += 1
+    if (keys.has('ArrowUp') || keys.has('w') || keys.has('W')) vy -= 1
+    if (keys.has('ArrowDown') || keys.has('s') || keys.has('S')) vy += 1
+    // Touch joystick input
+    const touch = touchRef.current
+    if (touch.active) {
+      const deadzone = 10
+      const maxDist = 60
+      const tdx = touch.dx
+      const tdy = touch.dy
+      const td = Math.hypot(tdx, tdy)
+      if (td > deadzone) {
+        const strength = Math.min(td / maxDist, 1)
+        vx += (tdx / td) * strength
+        vy += (tdy / td) * strength
+      }
+    }
+    if (vx !== 0 && vy !== 0) { const mag = Math.hypot(vx, vy); vx /= mag; vy /= mag }
+    player.vel.x = lerp(player.vel.x, vx * spd, 0.18)
+    player.vel.y = lerp(player.vel.y, vy * spd, 0.18)
+    player.pos.x += player.vel.x * (dt / 1000)
+
+      ctx.fillStyle = `rgba(191,0,255,${0.6 + Math.sin(t * 0.003) * 0.4})`
+      ctx.shadowColor = PALETTE.neon
+      ctx.shadowBlur = 8
+      const prompt = '[ TAP OR CLICK TO MANIFEST ]'
+      ctx.fillText(prompt, W / 2 - ctx.measureText(prompt).width / 2, H / 2 + 60)
+
+      ctx.font = '10px "Courier New", monospace'
+      ctx.fillStyle = 'rgba(100,0,200,0.5)'
+      ctx.shadowColor = 'transparent'
+      const controls = 'TOUCH + DRAG TO NAVIGATE    COLLECT NEURAL ECHOES    AVOID VOID ENTITIES'
+      ctx.fillText(controls, W / 2 - ctx.measureText(controls).width / 2, H / 2 + 100)
+
+      // Vignette
+
+    const onKeyUp = (e: KeyboardEvent) => keysRef.current.delete(e.key)
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKeyUp)
+
+    // Touch controls
+    const canvas = canvasRef.current
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault()
+      if (phaseRef.current === 'title') { initGame(); return }
+      if (phaseRef.current === 'dead') return
+      const t = e.touches[0]
+      touchRef.current = { active: true, startX: t.clientX, startY: t.clientY, dx: 0, dy: 0 }
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault()
+      if (!touchRef.current.active) return
+      const t = e.touches[0]
+      touchRef.current.dx = t.clientX - touchRef.current.startX
+      touchRef.current.dy = t.clientY - touchRef.current.startY
+    }
+    const onTouchEnd = (e: TouchEvent) => {
+      e.preventDefault()
+      touchRef.current = { active: false, startX: 0, startY: 0, dx: 0, dy: 0 }
+    }
+    if (canvas) {
+      canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+      canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+      canvas.addEventListener('touchend', onTouchEnd, { passive: false })
+      canvas.addEventListener('touchcancel', onTouchEnd, { passive: false })
+    }
+
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', onKeyUp)
+      if (canvas) {
+        canvas.removeEventListener('touchstart', onTouchStart)
+        canvas.removeEventListener('touchmove', onTouchMove)
+        canvas.removeEventListener('touchend', onTouchEnd)
+        canvas.removeEventListener('touchcancel', onTouchEnd)
+      }
+    }
+  }, [initGame])
+
+  const handleCanvasClick = () => {
+
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#020008', touchAction: 'none' }}>
+      <canvas
+        ref={canvasRef}
+        width={800}
+
+        onClick={handleCanvasClick}
+        style={{
+          display: 'block',
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'min(100vw, calc(100vh * 4 / 3))',
+          height: 'min(100vh, calc(100vw * 3 / 4))',
+          cursor: state.phase === 'title' ? 'pointer' : 'none',
+          imageRendering: 'pixelated',
+          border: '1px solid #3d0066',
+          boxShadow: '0 0 40px #8b00ff44, 0 0 80px #8b00ff22',
+          touchAction: 'none',
+        }}
+      />
+
+
+        }}>
+          <div style={{
+            textAlign: 'center',
+            padding: '32px 24px',
+            border: '1px solid #ff0040',
+            boxShadow: '0 0 60px #ff004033, inset 0 0 40px #ff004011',
+            background: 'rgba(10,0,20,0.95)',
+            maxWidth: '90vw',
+          }}>
+            <p style={{ color: '#ff0040', fontSize: 'clamp(28px, 8vw, 42px)', fontWeight: 'bold', margin: 0, letterSpacing: 6, textShadow: '0 0 20px #ff0040' }}>
+              SYNC FAILED
+            </p>
+            <p style={{ color: '#8b00ff', fontSize: 16, marginTop: 8, letterSpacing: 3 }}>
+
+src/routes/__root.tsx
+Changed
++1
+-1
+
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      {
+        title: 'MAXIMUM REALITY // THE SKY IS PEELING',
+
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
+      },
+      {
+        title: 'MAXIMUM REALITY // THE SKY IS PEELING',
+
+src/styles.css
+Changed
++13
+
+@import "tailwindcss" source("../");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+body {
+  @apply m-0;
+  background: #020008;
+
+  font-family: "Courier New", Courier, monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+
+
+
+
+
+
+
+}
+
+code {
+
+@import "tailwindcss" source("../");
+
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  @apply m-0;
+  background: #020008;
+
+  font-family: "Courier New", Courier, monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+code {
+
+
+can you turn that into something? 
+
