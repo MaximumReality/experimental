@@ -65,11 +65,10 @@
 </div>
 
 <script>
-    // Config: US-Specific Allergies & Hidden Fish Sources
     const highDanger = [
         "en:fish", "en:cod", "en:salmon", "en:tuna", "en:anchovies", "en:anchovy", 
         "en:sardines", "en:mackerel", "en:shellfish", "en:fish-sauce", 
-        "en:bonito", "en:worcestershire-sauce", "pescado" // Spanish for fish
+        "en:bonito", "en:worcestershire-sauce", "pescado"
     ];
     const warnings = [
         "en:soy-protein-isolate", "en:almonds", "en:brazil-nuts", "en:tree-nuts", 
@@ -119,27 +118,31 @@
                 const product = data.product;
                 const pAllergens = (product.allergens_tags || []).map(a => a.toLowerCase());
                 let ingredients = product.ingredients_text || "No ingredients listed.";
+                let lowerIngredients = ingredients.toLowerCase();
+
+                // Logic: Does the raw text contain danger words?
+                const textMatchDanger = highDanger.some(d => lowerIngredients.includes(d.replace('en:', '').replace(/-/g, ' ')));
+                const textMatchWarning = warnings.some(w => lowerIngredients.includes(w.replace('en:', '').replace(/-/g, ' ')));
 
                 const dangerMatches = pAllergens.filter(a => highDanger.some(d => a.includes(d)));
                 const warningMatches = pAllergens.filter(a => warnings.some(w => a.includes(w)));
 
-                // Highlight Logic
+                // Apply Highlights
                 highDanger.concat(warnings).forEach(term => {
                     const clean = term.replace('en:', '').replace(/-/g, ' ');
                     const regex = new RegExp(`(${clean})`, 'gi');
-                    ingredients = ingredients.replace(regex, '<b style="color:red; background:yellow;">$1</b>');
+                    ingredients = ingredients.replace(regex, '<mark style="background: #ff0; color: #d00; font-weight: bold; padding: 0 2px; border-radius: 3px;">$1</mark>');
                 });
 
                 let alertHtml = `<button onclick="resetApp()" class="btn-reset">🔄 Scan New Item</button>`;
 
-                if (dangerMatches.length > 0) {
-                    alertHtml += `<div class="warning-banner" style="background: #000; border: 4px solid red; animation: pulse 1.5s infinite;">🚨 EXTREME DANGER: FISH DETECTED 🚨</div>`;
+                if (dangerMatches.length > 0 || textMatchDanger) {
+                    alertHtml += `<div class="warning-banner" style="background: #000; border: 4px solid #ff0000; animation: pulse 1.5s infinite; color: #fff; font-size: 1.3em;">🚨 EXTREME DANGER: FISH DETECTED 🚨</div>`;
                 }
-                if (warningMatches.length > 0) {
-                    const names = warningMatches.map(a => a.replace('en:', '').toUpperCase());
-                    alertHtml += `<div class="warning-banner" style="background: var(--warning);">⚠️ WARNING: CONTAINS ${names.join(', ')}</div>`;
+                if (warningMatches.length > 0 || textMatchWarning) {
+                    alertHtml += `<div class="warning-banner" style="background: var(--warning); color: #fff;">⚠️ WARNING: CONTAINS WATCHED ALLERGENS</div>`;
                 }
-                if (dangerMatches.length === 0 && warningMatches.length === 0) {
+                if (dangerMatches.length === 0 && !textMatchDanger && warningMatches.length === 0 && !textMatchWarning) {
                     alertHtml += `<div style="color: #27ae60; text-align: center; padding: 10px; font-weight: bold; border: 2px solid #27ae60; border-radius: 8px; margin-bottom: 15px;">✅ No watched allergens detected</div>`;
                 }
 
@@ -155,11 +158,13 @@
                 scoreEl.style.backgroundColor = colors[score] || '#95a5a6';
 
                 const n = product.nutriments;
+                const round = (val) => val ? parseFloat(val).toFixed(1) : 0;
+
                 document.getElementById('nTable').innerHTML = `
-                    <tr><td><b>Calories</b></td><td style="text-align:right;">${n['energy-kcal_100g'] || 0} kcal</td></tr>
-                    <tr><td><b>Protein</b></td><td style="text-align:right;">${n.proteins_100g || 0}g</td></tr>
-                    <tr><td><b>Total Sugars</b></td><td style="text-align:right;">${n.sugars_100g || 0}g</td></tr>
-                    <tr><td><b>Sodium</b></td><td style="text-align:right;">${n.sodium_100g || 0}g</td></tr>
+                    <tr><td><b>Calories</b></td><td style="text-align:right;">${round(n['energy-kcal_100g'])} kcal</td></tr>
+                    <tr><td><b>Protein</b></td><td style="text-align:right;">${round(n.proteins_100g)}g</td></tr>
+                    <tr><td><b>Total Sugars</b></td><td style="text-align:right;">${round(n.sugars_100g)}g</td></tr>
+                    <tr><td><b>Sodium</b></td><td style="text-align:right;">${round(n.sodium_100g)}g</td></tr>
                 `;
             } else {
                 alertBox.innerHTML = `<button onclick="resetApp()" class="btn-reset">🔄 Try Again</button><p style="color:red; text-align:center;">Product not found.</p>`;
